@@ -1,6 +1,4 @@
-<div align="center">
-
-# ⏳ Chronos
+# Chronos
 
 ### Time-Travel and Branching Debugger for Stochastic AI Agents
 **Rewind, branch, and hot-patch multi-step AI execution without restarting from scratch.**
@@ -10,33 +8,31 @@
 [![Python: 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/)
 [![Zero Dependencies](https://img.shields.io/badge/dependencies-0-success.svg)](pyproject.toml)
 
-</div>
-
 ---
 
-## 💥 The "Step 18 Nightmare"
+## The Problem: The "Step 18 Nightmare"
 
 When building autonomous agents (researchers, coding assistants, multi-turn workflows), failure on Step 18 forces you to hit **Restart from Step 1**:
-- 💸 **Wasted Money:** Re-running Steps 1–17 burns real money in tokens.
-- ⏳ **Wasted Time:** Waiting 2 minutes for earlier steps to replay on every minor prompt tweak.
-- 🎲 **Stochastic Drift:** Because LLMs are probabilistic, Step 4 might fail on the retry, masking the bug on Step 18.
-- ⚠️ **Dangerous Side-Effects:** Real-world tool actions (APIs, database writes) get re-triggered unintentionally.
+- **Wasted Money:** Re-running Steps 1–17 repeatedly consumes tokens and API budget.
+- **Wasted Time:** Waiting minutes for earlier steps to replay on every minor prompt tweak.
+- **Stochastic Drift:** Because LLMs are probabilistic, Step 4 might fail on the retry, masking the bug on Step 18.
+- **Uncontrolled Side-Effects:** Real-world tool actions (APIs, database writes) get re-triggered unintentionally.
 
-**Chronos** gives AI agents a deterministic **Quicksave & Rewind button**.
-
----
-
-## ✨ Features
-
-- **⚡ Instant Cache Hits ($0 Cost, 0.00ms):** Historical steps replay from a local cryptographic DAG without re-querying the model API.
-- **🔀 Multiverse Branching:** Fork execution at any historical checkpoint, edit a prompt or parameter, and resume forward on an alternate branch.
-- **🔌 Zero-Boilerplate Auto-Wrapper:** Wrap your existing Google GenAI or OpenAI clients with `client = session.wrap(client)`—no rewriting agent loops.
-- **🖥️ Local Web UI (`chronos ui`):** An embedded, interactive visual tree showing branches, step latencies, error stack traces, and 1-click time-travel code snippets.
-- **🪶 Zero Dependencies:** Core library runs on pure Python standard library (`sqlite3`, `dataclasses`, `http.server`). No heavy dependencies, fast startup.
+Chronos provides a deterministic execution ledger and quicksave layer for AI agent workflows.
 
 ---
 
-## 🚀 Quickstart
+## Key Features
+
+- **Instant Cache Hits ($0 Cost, 0.00ms):** Historical steps replay from a local cryptographic DAG without re-querying the model API.
+- **Multiverse Branching:** Fork execution at any historical checkpoint, edit a prompt or parameter, and resume forward on an alternate branch.
+- **Zero-Boilerplate Auto-Wrapper:** Wrap your existing Google GenAI or OpenAI clients with `client = session.wrap(client)` without rewriting agent loops.
+- **Local Web UI (`chronos ui`):** An embedded visual tree showing branches, step latencies, error stack traces, and 1-click time-travel code snippets.
+- **Zero Dependencies:** Core library runs on pure Python standard library (`sqlite3`, `dataclasses`, `http.server`). Fast startup with zero third-party packages required.
+
+---
+
+## Quickstart
 
 ### 1. Installation
 
@@ -46,7 +42,7 @@ cd chronos
 pip install -e .
 ```
 
-### 2. Wrap Your Existing LLM Client in 1 Line
+### 2. Wrap Your Existing LLM Client in One Line
 
 ```python
 import chronos
@@ -58,7 +54,7 @@ session = chronos.init("market-researcher")
 # Wrap your existing client
 client = session.wrap(genai.Client())
 
-# Make standard calls — Chronos automatically hashes and records checkpoints
+# Standard calls are automatically hashed and recorded as checkpoints
 response = client.models.generate_content(
     model="gemini-2.5-flash",
     contents="Extract financial metrics from 10-Q filing"
@@ -67,7 +63,7 @@ response = client.models.generate_content(
 print(response.text)
 ```
 
-### 3. Time-Travel & Branch on Failure
+### 3. Time-Travel and Branch on Failure
 
 If Step 3 crashes, inspect the checkpoint and fork from Step 2:
 
@@ -80,7 +76,7 @@ fix_session = chronos.fork(
 
 client = fix_session.wrap(genai.Client())
 
-# Steps 1 & 2 replay in 0.00ms from cache for $0.00!
+# Steps 1 & 2 replay in 0.00ms from cache for $0.00
 # Step 3 executes the patched prompt live:
 response = client.models.generate_content(
     model="gemini-2.5-flash",
@@ -90,7 +86,7 @@ response = client.models.generate_content(
 
 ---
 
-## 🖥️ Local Web Dashboard
+## Local Web Dashboard
 
 Launch the visual branching tree with one command:
 
@@ -99,13 +95,13 @@ chronos ui --db demo_chronos.db
 ```
 
 Open **[http://localhost:4040](http://localhost:4040)** to:
-* Explore the interactive execution timeline and visual branches.
-* Compare inputs and outputs side-by-side.
-* Copy 1-click Python rewind code snippets.
+- Explore the interactive execution timeline and visual branches.
+- Compare inputs and outputs side-by-side.
+- Copy 1-click Python rewind code snippets.
 
 ---
 
-## 🛠️ Architecture
+## Architecture
 
 ```text
 [Your Agent / Workflow]
@@ -121,7 +117,7 @@ Open **[http://localhost:4040](http://localhost:4040)** to:
 │        [Replay Match?]             [Cache Miss / Fork] │
 │              │                           │             │
 │              ▼                           ▼             │
-│       ⚡ 0.00ms Replay            ⏺️ Live Execution     │
+│        0.00ms Replay               Live Execution      │
 │       ($0 API Cost)                (Records new node)  │
 └────────────────────────────┬───────────────────────────┘
                              │
@@ -134,7 +130,7 @@ Open **[http://localhost:4040](http://localhost:4040)** to:
 
 ---
 
-## 🧪 Running Tests
+## Running Tests
 
 Tests run out of the box with zero third-party packages:
 
@@ -144,6 +140,6 @@ PYTHONPATH=src python3 -m unittest discover -s tests
 
 ---
 
-## 📄 License
+## License
 
 Apache License 2.0. See [LICENSE](LICENSE) for details.
