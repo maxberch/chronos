@@ -6,6 +6,7 @@ import uuid
 from typing import Any, Callable, Dict, List, Optional
 from chronos.models import EventType, StepEvent, Checkpoint, Run, Branch
 from chronos.storage import ChronosStore, compute_checkpoint_id
+from chronos.wrapper import ChronosProxy
 
 
 class ChronosSession:
@@ -84,6 +85,14 @@ class ChronosSession:
         session.replay_queue = history
         return session
 
+    def wrap(self, client: Any) -> Any:
+        """Wrap an official LLM SDK client (Google GenAI, OpenAI, Anthropic, etc.).
+        
+        Automatically intercepts API calls (generate_content, create), recording checkpoints
+        and serving cached outputs during time-travel replays.
+        """
+        return ChronosProxy(client, self)
+
     def step(
         self,
         name: str,
@@ -153,8 +162,14 @@ class ChronosSession:
             status = "❌ FAILED" if error_msg else "✅ DONE"
             print(f"[Chronos] ⏺️  Recorded: '{name}' [step {self.step_counter}] -> {status} ({duration_ms:.1f}ms)")
 
-    def tool(self, name: Optional[str] = None):
-        """Decorator to instrument tool functions."""
+    def tool(self, name: Optional[str] = None, safe_replay: bool = True):
+        """Decorator to instrument tool functions.
+        
+        Args:
+            name: Custom identifier for the tool. Defaults to function.__name__.
+            safe_replay: If True (default), when replaying a historical run, the tool
+                         returns the recorded output without re-triggering real-world side effects.
+        """
         def decorator(func: Callable):
             tool_name = name or func.__name__
             def wrapper(*args, **kwargs):
@@ -169,7 +184,7 @@ class ChronosSession:
         return decorator
 
     def llm(self, model_name: str):
-        """Context or wrapper for an LLM query."""
+        """Explicit context wrapper for an LLM query."""
         def call(inputs: Dict[str, Any], generate_fn: Callable[[], Any]) -> Any:
             return self.step(
                 name=model_name,
@@ -178,4 +193,3 @@ class ChronosSession:
                 fn=generate_fn
             )
         return call
-

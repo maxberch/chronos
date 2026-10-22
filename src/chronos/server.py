@@ -98,3 +98,4 @@ def start_server(
     except KeyboardInterrupt:
         print("\nShutting down Chronos Web UI.")
         server.server_close()
+

@@ -1,9 +1,10 @@
 """Chronos: Time-Travel and Branching Debugger for Stochastic AI Agents."""
 
-from typing import Optional
+from typing import Optional, Any
 from chronos.models import EventType, StepEvent, Checkpoint, Run, Branch
 from chronos.storage import ChronosStore
 from chronos.tracer import ChronosSession
+from chronos.wrapper import ChronosProxy, ChronosResponse
 
 __version__ = "0.1.0"
 __all__ = [
@@ -14,8 +15,11 @@ __all__ = [
     "Branch",
     "ChronosStore",
     "ChronosSession",
+    "ChronosProxy",
+    "ChronosResponse",
     "init",
     "fork",
+    "wrap",
 ]
 
 
@@ -40,3 +44,8 @@ def fork(
         db_path=db_path
     )
 
+
+def wrap(client: Any, session: Optional[ChronosSession] = None, run_name: str = "wrapped-client") -> Any:
+    """Wrap an LLM client with an active or new Chronos session."""
+    active_session = session or init(name=run_name)
+    return active_session.wrap(client)
