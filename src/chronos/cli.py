@@ -59,6 +59,16 @@ def cmd_inspect(args):
     print(json.dumps(chk.event.outputs, indent=2))
 
 
+def cmd_ui(args):
+    from chronos.server import start_server
+    start_server(
+        host=args.host,
+        port=args.port,
+        db_path=args.db,
+        open_browser=not args.no_open
+    )
+
+
 def main():
     parser = argparse.ArgumentParser(prog="chronos", description="Time-Travel Debugger for AI Agents")
     parser.add_argument("--db", default=".chronos.db", help="Path to SQLite database")
@@ -76,6 +86,12 @@ def main():
     inspect_parser = subparsers.add_parser("inspect", help="Inspect a specific checkpoint")
     inspect_parser.add_argument("checkpoint_id", help="Checkpoint ID to inspect")
 
+    # ui
+    ui_parser = subparsers.add_parser("ui", help="Launch the local Chronos Web UI")
+    ui_parser.add_argument("--host", default="127.0.0.1", help="Host to bind to (default: 127.0.0.1)")
+    ui_parser.add_argument("--port", type=int, default=4040, help="Port to listen on (default: 4040)")
+    ui_parser.add_argument("--no-open", action="store_true", help="Do not automatically open browser")
+
     args = parser.parse_args()
     if args.command == "runs":
         cmd_runs(args)
@@ -83,6 +99,8 @@ def main():
         cmd_log(args)
     elif args.command == "inspect":
         cmd_inspect(args)
+    elif args.command == "ui":
+        cmd_ui(args)
     else:
         parser.print_help()
 

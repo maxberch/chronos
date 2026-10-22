@@ -29,7 +29,6 @@ def compute_checkpoint_id(
     hasher.update(event_type.value.encode("utf-8"))
     hasher.update(name.encode("utf-8"))
     hasher.update(canonical_json_dump(inputs).encode("utf-8"))
-    # Return first 16 characters for git-like clean identifiers
     return f"chk_{hasher.hexdigest()[:16]}"
 
 
@@ -42,7 +41,6 @@ class ChronosStore:
     def _get_connection(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
-        # Enable WAL mode for high concurrency and fast local writes
         conn.execute("PRAGMA journal_mode=WAL;")
         return conn
 
@@ -88,6 +86,9 @@ class ChronosStore:
 
                 CREATE INDEX IF NOT EXISTS idx_parent_id 
                 ON checkpoints(parent_id);
+
+                CREATE INDEX IF NOT EXISTS idx_run_id 
+                ON checkpoints(run_id);
             """)
 
     def save_run(self, run: Run):
@@ -109,6 +110,35 @@ class ChronosStore:
                 metadata=json.loads(row["metadata"])
             )
 
+    def list_runs(self) -> List[Dict[str, Any]]:
+        with self._get_connection() as conn:
+            rows = conn.execute("""
+                SELECT 
+                    r.run_id, 
+                    r.name, 
+                    r.created_at, 
+                    r.metadata,
+                    COUNT(c.checkpoint_id) as checkpoint_count,
+                    SUM(CASE WHEN c.error IS NOT NULL THEN 1 ELSE 0 END) as error_count,
+                    COUNT(DISTINCT c.branch_id) as branch_count
+                FROM runs r
+                LEFT JOIN checkpoints c ON r.run_id = c.run_id
+                GROUP BY r.run_id
+                ORDER BY r.created_at DESC
+            """).fetchall()
+            return [
+                {
+                    "run_id": r["run_id"],
+                    "name": r["name"],
+                    "created_at": r["created_at"],
+                    "metadata": json.loads(r["metadata"]),
+                    "checkpoint_count": r["checkpoint_count"],
+                    "error_count": r["error_count"],
+                    "branch_count": r["branch_count"]
+                }
+                for r in rows
+            ]
+
     def save_branch(self, branch: Branch):
         with self._get_connection() as conn:
             conn.execute(
@@ -128,6 +158,14 @@ class ChronosStore:
                 name=row["name"],
                 created_at=row["created_at"]
             )
+
+    def list_branches_for_run(self, run_id: str) -> List[Dict[str, Any]]:
+        with self._get_connection() as conn:
+            rows = conn.execute(
+                "SELECT * FROM branches WHERE run_id = ? ORDER BY created_at ASC",
+                (run_id,)
+            ).fetchall()
+            return [dict(r) for r in rows]
 
     def save_checkpoint(self, checkpoint: Checkpoint):
         with self._get_connection() as conn:
@@ -169,6 +207,32 @@ class ChronosStore:
                 (branch_id,)
             ).fetchall()
             return [self._row_to_checkpoint(r) for r in rows]
+
+    def get_run_graph(self, run_id: str) -> Dict[str, Any]:
+        """Fetch the full graph (run, branches, and all checkpoints) for visual DAG rendering."""
+        run = self.get_run(run_id)
+        if not run:
+            return {}
+
+        branches = self.list_branches_for_run(run_id)
+
+        with self._get_connection() as conn:
+            rows = conn.execute(
+                "SELECT * FROM checkpoints WHERE run_id = ? ORDER BY step_index ASC, created_at ASC",
+                (run_id,)
+            ).fetchall()
+            checkpoints = [self._row_to_checkpoint(r).to_dict() for r in rows]
+
+        return {
+            "run": {
+                "run_id": run.run_id,
+                "name": run.name,
+                "created_at": run.created_at,
+                "metadata": run.metadata
+            },
+            "branches": branches,
+            "checkpoints": checkpoints
+        }
 
     def _row_to_checkpoint(self, row: sqlite3.Row) -> Checkpoint:
         outputs = json.loads(row["outputs"]) if row["outputs"] is not None else None

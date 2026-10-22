@@ -42,3 +42,4 @@ client = session.wrap(genai.Client())
 session.rewind(checkpoint="step_3", patch={"temperature": 0.2})
 session.resume()
 ```
+

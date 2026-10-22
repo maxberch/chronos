@@ -90,3 +90,4 @@ Indices:
    * Matches current step against cached checkpoint.
    * If a match exists in the active branch: **bypasses live API call**, instantly returns cached outputs.
    * If no match exists or user mutated parameters: transitions automatically to `RECORD` mode on a new branch.
+

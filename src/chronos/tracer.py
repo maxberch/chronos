@@ -178,3 +178,4 @@ class ChronosSession:
                 fn=generate_fn
             )
         return call
+

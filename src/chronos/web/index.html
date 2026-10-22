@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chronos — Agent Time-Travel Debugger</title>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: #151c2e;
+      --border: #232f48;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --accent: #6366f1;
+      --accent-hover: #4f46e5;
+      --success: #10b981;
+      --error: #ef4444;
+      --llm: #a855f7;
+      --tool: #38bdf8;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Header */
+    header {
+      background: #0e1424;
+      border-bottom: 1px solid var(--border);
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .brand-icon {
+      font-size: 1.3rem;
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .badge-live {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--success);
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 0.15rem 0.5rem;
+      border-radius: 9999px;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    select {
+      background: var(--card-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 0.45rem 0.9rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      outline: none;
+      cursor: pointer;
+    }
+    button.btn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 0.45rem 0.9rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: background 0.15s;
+    }
+    button.btn:hover { background: var(--accent-hover); }
+    button.btn-secondary {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    button.btn-secondary:hover { background: #1c263d; }
+
+    /* Main Workspace */
+    .workspace {
+      display: flex;
+      flex: 1;
+      height: calc(100vh - 60px);
+      overflow: hidden;
+    }
+
+    /* Left DAG / Timeline Canvas */
+    .canvas-container {
+      flex: 1;
+      overflow: auto;
+      padding: 2rem;
+      position: relative;
+      background: radial-gradient(#1a2238 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+
+    .branch-group {
+      margin-bottom: 2.5rem;
+    }
+    .branch-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .branch-pill {
+      background: #1e293b;
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+      color: #38bdf8;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+    }
+
+    .timeline-nodes {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      padding-bottom: 1rem;
+    }
+
+    /* Node Card */
+    .node-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      min-width: 220px;
+      max-width: 240px;
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+      flex-shrink: 0;
+    }
+    .node-card:hover {
+      transform: translateY(-2px);
+      border-color: #3b82f6;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+    .node-card.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.35);
+    }
+    .node-card.status-error {
+      border-color: rgba(239, 68, 68, 0.6);
+      background: linear-gradient(180deg, var(--card-bg), rgba(239, 68, 68, 0.05));
+    }
+    .node-card.status-cache {
+      border-left: 3px solid #f59e0b;
+    }
+
+    .node-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+    }
+    .step-badge {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .type-pill {
+      font-size: 0.68rem;
+      font-weight: 600;
+      padding: 0.1rem 0.45rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+    .type-llm { background: rgba(168, 85, 247, 0.15); color: var(--llm); border: 1px solid rgba(168, 85, 247, 0.3); }
+    .type-tool { background: rgba(56, 189, 248, 0.15); color: var(--tool); border: 1px solid rgba(56, 189, 248, 0.3); }
+
+    .node-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 0.5rem;
+    }
+    .node-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      padding-top: 0.4rem;
+    }
+    .node-status {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    .node-status.success { color: var(--success); }
+    .node-status.failed { color: var(--error); font-weight: 600; }
+
+    .connector-arrow {
+      color: var(--border);
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+
+    /* Right Inspector Drawer */
+    .inspector {
+      width: 440px;
+      background: #0e1424;
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      overflow: hidden;
+    }
+    .inspector-header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .inspector-title {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    .inspector-content {
+      padding: 1.25rem;
+      overflow-y: auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .meta-box {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.85rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.6rem;
+      font-size: 0.8rem;
+    }
+    .meta-item-label { color: var(--text-muted); margin-bottom: 0.15rem; font-size: 0.72rem; }
+    .meta-item-value { font-family: var(--font-mono); font-weight: 500; }
+
+    .code-block {
+      background: #090d16;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.85rem;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: #cbd5e1;
+      max-height: 220px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .rewind-panel {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1));
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      border-radius: 8px;
+      padding: 1rem;
+    }
+    .rewind-panel h4 {
+      font-size: 0.85rem;
+      margin-bottom: 0.4rem;
+      color: #a5b4fc;
+    }
+    .rewind-panel p {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+    }
+
+    .empty-state {
+      padding: 4rem 2rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <span class="brand-icon">⏳</span>
+      <span>Chronos</span>
+      <span class="badge-live">Live</span>
+    </div>
+
+    <div class="header-actions">
+      <select id="runSelect">
+        <option value="">Loading runs...</option>
+      </select>
+      <button class="btn btn-secondary" onclick="refreshData()">↻ Refresh</button>
+    </div>
+  </header>
+
+  <!-- Workspace -->
+  <div class="workspace">
+    <!-- DAG Canvas -->
+    <div class="canvas-container" id="canvas">
+      <div class="empty-state">Loading execution DAG...</div>
+    </div>
+
+    <!-- Inspector Drawer -->
+    <div class="inspector" id="inspector">
+      <div class="inspector-header">
+        <div class="inspector-title" id="inspectorTitle">Select a Checkpoint</div>
+      </div>
+      <div class="inspector-content" id="inspectorContent">
+        <div class="empty-state">Click any node in the timeline to inspect inputs, outputs, errors, and time-travel replay code.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentRunData = null;
+    let selectedCheckpointId = null;
+
+    async function fetchRuns() {
+      try {
+        const res = await fetch('/api/runs');
+        const runs = await res.json();
+        const select = document.getElementById('runSelect');
+        select.innerHTML = '';
+        if (runs.length === 0) {
+          select.innerHTML = '<option value="">No runs found</option>';
+          return;
+        }
+        runs.forEach(r => {
+          const opt = document.createElement('option');
+          opt.value = r.run_id;
+          opt.textContent = `${r.name} (${r.run_id}) [${r.checkpoint_count} steps]`;
+          select.appendChild(opt);
+        });
+
+        select.onchange = () => loadRun(select.value);
+        loadRun(runs[0].run_id);
+      } catch (err) {
+        console.error("Failed to fetch runs:", err);
+      }
+    }
+
+    async function loadRun(runId) {
+      if (!runId) return;
+      try {
+        const res = await fetch(`/api/runs/${runId}`);
+        currentRunData = await res.json();
+        renderDAG(currentRunData);
+      } catch (err) {
+        console.error("Failed to load run graph:", err);
+      }
+    }
+
+    function renderDAG(data) {
+      const canvas = document.getElementById('canvas');
+      if (!data || !data.checkpoints || data.checkpoints.length === 0) {
+        canvas.innerHTML = '<div class="empty-state">No checkpoints found for this run.</div>';
+        return;
+      }
+
+      // Group checkpoints by branch
+      const branches = {};
+      data.checkpoints.forEach(chk => {
+        if (!branches[chk.branch_id]) {
+          branches[chk.branch_id] = [];
+        }
+        branches[chk.branch_id].push(chk);
+      });
+
+      let html = '';
+      for (const [branchId, chks] of Object.entries(branches)) {
+        const branchObj = (data.branches || []).find(b => b.branch_id === branchId);
+        const branchName = branchObj ? branchObj.name : branchId;
+
+        html += `
+          <div class="branch-group">
+            <div class="branch-title">
+              <span>🌿 Branch:</span>
+              <span class="branch-pill">${escapeHtml(branchName)}</span>
+              ${branchObj && branchObj.parent_checkpoint_id ? `<span style="font-size:0.75rem;">(forked from ${escapeHtml(branchObj.parent_checkpoint_id.slice(0, 10))}...)</span>` : ''}
+            </div>
+            <div class="timeline-nodes">
+        `;
+
+        chks.forEach((chk, index) => {
+          const isError = !!chk.event.error;
+          const isLlm = chk.event.event_type === 'llm';
+          const typeClass = isLlm ? 'type-llm' : 'type-tool';
+          const typeLabel = isLlm ? '🤖 LLM' : '⚙️ TOOL';
+          const statusClass = isError ? 'failed' : 'success';
+          const statusIcon = isError ? '❌ Failed' : `✅ ${chk.event.duration_ms.toFixed(0)}ms`;
+          const selectedClass = chk.checkpoint_id === selectedCheckpointId ? 'selected' : '';
+
+          html += `
+            <div class="node-card ${isError ? 'status-error' : ''} ${selectedClass}" onclick="selectNode('${chk.checkpoint_id}')">
+              <div class="node-header">
+                <span class="step-badge">Step #${chk.step_index}</span>
+                <span class="type-pill ${typeClass}">${typeLabel}</span>
+              </div>
+              <div class="node-title" title="${escapeHtml(chk.event.name)}">${escapeHtml(chk.event.name)}</div>
+              <div class="node-footer">
+                <span class="node-status ${statusClass}">${statusIcon}</span>
+                <span style="font-family: var(--font-mono); font-size: 0.65rem;">${escapeHtml(chk.checkpoint_id.slice(0, 8))}</span>
+              </div>
+            </div>
+          `;
+
+          if (index < chks.length - 1) {
+            html += `<span class="connector-arrow">➔</span>`;
+          }
+        });
+
+        html += `
+            </div>
+          </div>
+        `;
+      }
+
+      canvas.innerHTML = html;
+    }
+
+    function selectNode(checkpointId) {
+      selectedCheckpointId = checkpointId;
+      renderDAG(currentRunData);
+
+      const chk = currentRunData.checkpoints.find(c => c.checkpoint_id === checkpointId);
+      if (!chk) return;
+
+      const title = document.getElementById('inspectorTitle');
+      const content = document.getElementById('inspectorContent');
+
+      title.innerHTML = `Checkpoint: <span style="font-family: var(--font-mono); color: #38bdf8;">${escapeHtml(chk.checkpoint_id)}</span>`;
+
+      const pythonSnippet = `session = chronos.fork(
+    checkpoint_id="${chk.checkpoint_id}",
+    new_branch_name="patch-step-${chk.step_index}"
+)`;
+
+      content.innerHTML = `
+        <div class="meta-box">
+          <div>
+            <div class="meta-item-label">EVENT TYPE</div>
+            <div class="meta-item-value">${chk.event.event_type.toUpperCase()}</div>
+          </div>
+          <div>
+            <div class="meta-item-label">STEP INDEX</div>
+            <div class="meta-item-value">#${chk.step_index}</div>
+          </div>
+          <div>
+            <div class="meta-item-label">NAME</div>
+            <div class="meta-item-value">${escapeHtml(chk.event.name)}</div>
+          </div>
+          <div>
+            <div class="meta-item-label">DURATION</div>
+            <div class="meta-item-value">${chk.event.duration_ms.toFixed(1)} ms</div>
+          </div>
+        </div>
+
+        ${chk.event.error ? `
+          <div>
+            <h4 style="font-size:0.8rem; color:var(--error); margin-bottom:0.4rem;">⚠️ Error Occurred</h4>
+            <div class="code-block" style="border-color: rgba(239, 68, 68, 0.4); color: #fca5a5;">${escapeHtml(chk.event.error)}</div>
+          </div>
+        ` : ''}
+
+        <div class="rewind-panel">
+          <h4>⏳ Time-Travel Rewind Snippet</h4>
+          <p>Fork execution from this checkpoint with zero-token cache replay:</p>
+          <div class="code-block" id="copyTarget">${escapeHtml(pythonSnippet)}</div>
+          <button class="btn btn-secondary" style="margin-top: 0.6rem; width: 100%;" onclick="copySnippet()">📋 Copy Fork Code</button>
+        </div>
+
+        <div>
+          <h4 style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.4rem;">Inputs</h4>
+          <div class="code-block">${escapeHtml(JSON.stringify(chk.event.inputs, null, 2))}</div>
+        </div>
+
+        <div>
+          <h4 style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.4rem;">Outputs</h4>
+          <div class="code-block">${escapeHtml(JSON.stringify(chk.event.outputs, null, 2))}</div>
+        </div>
+      `;
+    }
+
+    function copySnippet() {
+      const text = document.getElementById('copyTarget').innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        alert("Copied Python fork code to clipboard!");
+      });
+    }
+
+    function refreshData() {
+      fetchRuns();
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    fetchRuns();
+  </script>
+</body>
+</html>
