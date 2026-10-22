@@ -5,7 +5,7 @@
 ### Time-Travel and Branching Debugger for Stochastic AI Agents
 **Rewind, branch, and hot-patch multi-step AI execution without restarting from scratch.**
 
-[![Tests](https://github.com/chronos-ai/chronos/actions/workflows/test.yml/badge.svg)](https://github.com/chronos-ai/chronos/actions)
+[![Tests](https://github.com/maxberch/chronos/actions/workflows/test.yml/badge.svg)](https://github.com/maxberch/chronos/actions)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python: 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/)
 [![Zero Dependencies](https://img.shields.io/badge/dependencies-0-success.svg)](pyproject.toml)
@@ -41,7 +41,7 @@ When building autonomous agents (researchers, coding assistants, multi-turn work
 ### 1. Installation
 
 ```bash
-git clone https://github.com/your-org/chronos.git
+git clone https://github.com/maxberch/chronos.git
 cd chronos
 pip install -e .
 ```

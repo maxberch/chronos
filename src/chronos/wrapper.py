@@ -134,3 +134,4 @@ class ChronosProxy:
             return ChronosResponse(result)
 
         return intercepted
+
